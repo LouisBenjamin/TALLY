@@ -95,10 +95,12 @@ Covers the money math, split logic, debt simplification, CSV import parsing, and
 GitHub Actions runs three workflows:
 
 - `test.yml` runs `flutter analyze` and `flutter test` on every push and PR.
-- `deploy-web.yml` builds the web app and deploys it to Cloudflare Pages on pushes to `main`.
+- `deploy-web.yml` runs on pushes to `main`. It first applies any new files in `supabase/migrations/` to the hosted database (`supabase db push`, which skips migrations already recorded), then builds the web app and deploys it to Cloudflare Pages. If a migration fails, nothing is deployed.
 - `build-apk.yml` builds an Android APK on `v*` tags and attaches it to the GitHub release.
 
-Secrets needed: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `REDIRECT_URL`, `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`.
+Secrets needed: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `REDIRECT_URL`, `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `SUPABASE_DB_URL` (the database's **Session pooler** connection string; GitHub runners can't reach the direct IPv6 one).
+
+So a schema change is: add `supabase/migrations/NNNN_name.sql`, merge. Never run migrations by hand in the SQL editor, or the CLI won't know they ran.
 
 ## Not done yet
 

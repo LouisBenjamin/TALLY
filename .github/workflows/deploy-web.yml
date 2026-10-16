@@ -5,9 +5,53 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  # Manual run, mainly for the one-time history repair below.
+  workflow_dispatch:
+    inputs:
+      mark_applied:
+        description: >-
+          Versions already applied by hand, space-separated (e.g. "0001 0002").
+          They get recorded as applied without being run. Leave empty normally.
+        required: false
+        default: ''
 
 jobs:
+  # Applies new supabase/migrations/*.sql to the hosted database before the
+  # matching web build goes live, so new code never meets an old schema. The
+  # CLI records applied versions in supabase_migrations.schema_migrations and
+  # only runs the files not yet recorded. Runs for main only (pushes, or a
+  # manual run on main), and is a no-op until the SUPABASE_DB_URL secret is set.
+  migrate:
+    if: ${{ github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+
+    steps:
+      - uses: actions/checkout@v4
+        if: ${{ env.SUPABASE_DB_URL != '' }}
+
+      - uses: supabase/setup-cli@v1
+        if: ${{ env.SUPABASE_DB_URL != '' }}
+        with:
+          version: 2.119.0
+
+      - name: Record hand-applied migrations
+        if: ${{ env.SUPABASE_DB_URL != '' && inputs.mark_applied }}
+        env:
+          MARK_APPLIED: ${{ inputs.mark_applied }}
+        # Unquoted on purpose: one argument per version.
+        run: supabase migration repair --db-url "$SUPABASE_DB_URL" --status applied $MARK_APPLIED
+
+      - name: Apply new migrations
+        if: ${{ env.SUPABASE_DB_URL != '' }}
+        run: supabase db push --db-url "$SUPABASE_DB_URL" --yes
+
   build-and-deploy:
+    needs: migrate
+    # Run when migrate succeeded or was skipped (PRs), never after it failed:
+    # a half-migrated database plus new code is worse than old code.
+    if: ${{ !failure() && !cancelled() }}
     runs-on: ubuntu-latest
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -32,11 +76,12 @@ jobs:
             --dart-define=SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }} \
             --dart-define=REDIRECT_URL=${{ secrets.REDIRECT_URL }}
 
-      # Deploy only from main, and only once Cloudflare is configured. Until the
+      # Deploy only from main (never a PR or a manual run on another branch),
+      # and only once Cloudflare is configured. Until the
       # CLOUDFLARE_API_TOKEN secret is set, the build above still runs on every
       # push/PR (validating the app) and the job stays green instead of red.
       - name: Deploy to Cloudflare Pages
-        if: ${{ github.event_name == 'push' && env.CLOUDFLARE_API_TOKEN != '' }}
+        if: ${{ github.ref == 'refs/heads/main' && env.CLOUDFLARE_API_TOKEN != '' }}
         # cloudflare/pages-action was retired; wrangler-action is its replacement.
         uses: cloudflare/wrangler-action@v4
         with:
