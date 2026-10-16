@@ -80,13 +80,18 @@ class AppTheme {
       onSurfaceVariant: const Color(0xFF4A5B59),
       error: const Color(0xFFBA1A1A),
     ),
-    const AppColors(positive: Color(0xFF13803F)),
+    const AppColors(positive: Color(0xFF0F6E33)),
   );
 
   static ThemeData _build(ColorScheme cs, AppColors app) {
     final pill = RoundedRectangleBorder(borderRadius: BorderRadius.circular(999));
     const buttonSize = Size(64, 48); // 48px keeps touch targets comfortable.
-    const buttonText = TextStyle(fontWeight: FontWeight.w700, fontSize: 15);
+    // Component textStyles don't inherit ThemeData.fontFamily, so name it.
+    const buttonText = TextStyle(
+      fontFamily: 'PlusJakartaSans',
+      fontWeight: FontWeight.w700,
+      fontSize: 15,
+    );
 
     return ThemeData(
       useMaterial3: true,
