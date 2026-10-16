@@ -17,10 +17,13 @@ void main() {
     });
 
     test('always sums back to the original total (penny-perfect)', () {
-      for (final total in ['0.01', '0.10', '10', '19.99', '1000.03', '7.77']) {
+      for (final total in ['0.01', '0.10', '10', '10.01', '19.99', '1000.03', '7.77']) {
         for (var n = 1; n <= 7; n++) {
           final shares = splitEqually(d(total), n);
           expect(shares.length, n);
+          for (final s in shares) {
+            expect(s.scale <= 2, isTrue, reason: 'sub-cent share $s');
+          }
           expect(
             shares.reduce((a, b) => a + b),
             d(total),

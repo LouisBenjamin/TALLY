@@ -1,4 +1,5 @@
 import 'package:decimal/decimal.dart';
+import 'package:tally/core/dates.dart';
 import 'package:tally/core/supabase_client.dart';
 import 'package:tally/features/expenses/split_logic.dart';
 import 'package:tally/models/expense.dart';
@@ -29,8 +30,9 @@ class ExpensesRepository {
         .toList();
   }
 
-  // Creates an expense with its splits. [splits] must sum to [amount]
-  // (validated in the UI). Money is Decimal, sent as strings so numeric(12,2)
+  // Creates an expense and its splits in one transaction via the
+  // create_expense RPC, which re-checks membership and that the splits sum to
+  // the amount server-side. Money is Decimal, sent as strings so numeric(12,2)
   // precision survives the JSON round-trip.
   Future<void> createExpense({
     required String groupId,
@@ -41,29 +43,18 @@ class ExpensesRepository {
     String? categoryId,
     required List<Split> splits,
   }) async {
-    final userId = supabase.auth.currentUser!.id;
-
-    // Insert expense, get back the generated ID.
-    final expenseRow = await supabase
-        .from('expenses')
-        .insert({
-          'group_id': groupId,
-          'payer_member_id': payerMemberId,
-          'amount': amount.toString(),
-          'description': description,
-          'split_type': splitType,
-          'category_id': categoryId,
-          'created_by': userId,
-        })
-        .select('id')
-        .single();
-
-    final expenseId = expenseRow['id'] as String;
-
-    // Insert all split rows atomically in one request.
-    await supabase.from('expense_splits').insert(
-          splits.map((s) => _splitJson(expenseId, s)).toList(),
-        );
+    await supabase.rpc('create_expense', params: {
+      'p_group_id': groupId,
+      'p_payer_member_id': payerMemberId,
+      'p_amount': amount.toString(),
+      'p_description': description,
+      'p_split_type': splitType,
+      'p_category_id': categoryId,
+      // The user's local today: the server's current_date is UTC, which is
+      // already tomorrow on a Montreal evening.
+      'p_occurred_on': isoDate(DateTime.now()),
+      'p_splits': splitsJson(splits),
+    });
   }
 
   // Rewrites an expense and its splits in one transaction via the
@@ -85,14 +76,7 @@ class ExpensesRepository {
       'p_description': description,
       'p_split_type': splitType,
       'p_category_id': categoryId,
-      'p_splits': [
-        for (final s in splits)
-          {
-            'member_id': s.memberId,
-            'share_amount': s.shareAmount.toString(),
-            if (s.sharePercent != null) 'share_percent': s.sharePercent.toString(),
-          },
-      ],
+      'p_splits': splitsJson(splits),
     });
   }
 
@@ -103,11 +87,14 @@ class ExpensesRepository {
   Future<void> deleteExpense({required String expenseId}) async {
     await supabase.rpc('delete_expense', params: {'p_expense_id': expenseId});
   }
-
-  Map<String, dynamic> _splitJson(String expenseId, Split s) => {
-        'expense_id': expenseId,
-        'member_id': s.memberId,
-        'share_amount': s.shareAmount.toString(),
-        if (s.sharePercent != null) 'share_percent': s.sharePercent.toString(),
-      };
 }
+
+// The p_splits payload shared by every RPC that writes splits.
+List<Map<String, String>> splitsJson(List<Split> splits) => [
+      for (final s in splits)
+        {
+          'member_id': s.memberId,
+          'share_amount': s.shareAmount.toString(),
+          if (s.sharePercent != null) 'share_percent': s.sharePercent.toString(),
+        },
+    ];
