@@ -57,3 +57,6 @@ supabase/.temp
 
 # Desktop scaffolding — project targets web + Android, regenerate with `flutter create . --platforms=windows` if ever needed
 /windows/
+
+# Flutter DevTools extension settings (local only for now)
+devtools_options.yaml
