@@ -8,5 +8,7 @@
 --
 -- Allowing creators to read their own groups makes the RETURNING row visible and
 -- is correct regardless: a creator should always be able to see their group.
+-- 0001 now creates this policy too; drop first so a fresh database applies.
+drop policy if exists "creator reads group" on groups;
 create policy "creator reads group" on groups
   for select using (created_by = auth.uid());

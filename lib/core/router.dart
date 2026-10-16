@@ -21,13 +21,8 @@ final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: '/login',
     refreshListenable: notifier,
-    redirect: (context, state) {
-      final isLoggedIn = supabase.auth.currentSession != null;
-      final isGoingToLogin = state.matchedLocation == '/login';
-      if (!isLoggedIn && !isGoingToLogin) return '/login';
-      if (isLoggedIn && isGoingToLogin) return '/groups';
-      return null;
-    },
+    redirect: (context, state) =>
+        authRedirect(supabase.auth.currentSession != null, state.uri),
     routes: [
       GoRoute(
         path: '/login',
@@ -117,6 +112,23 @@ final routerProvider = Provider<GoRouter>((ref) {
     ],
   );
 });
+
+// Signed-out users go to /login carrying where they were headed (?from=), so an
+// invite link like /join?code=X survives sign-in instead of landing on /groups.
+String? authRedirect(bool isLoggedIn, Uri uri) {
+  final isGoingToLogin = uri.path == '/login';
+  if (!isLoggedIn && !isGoingToLogin) {
+    return Uri(path: '/login', queryParameters: {'from': uri.toString()})
+        .toString();
+  }
+  if (isLoggedIn && isGoingToLogin) {
+    final from = uri.queryParameters['from'];
+    // Only in-app paths: '//host' would be read as another origin.
+    final safe = from != null && from.startsWith('/') && !from.startsWith('//');
+    return safe ? from : '/groups';
+  }
+  return null;
+}
 
 // Bridges Supabase auth state changes into GoRouter's Listenable interface.
 class _AuthNotifier extends ChangeNotifier {
