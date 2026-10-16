@@ -37,10 +37,10 @@ jobs:
       # push/PR (validating the app) and the job stays green instead of red.
       - name: Deploy to Cloudflare Pages
         if: ${{ github.event_name == 'push' && env.CLOUDFLARE_API_TOKEN != '' }}
-        uses: cloudflare/pages-action@v1
+        # cloudflare/pages-action was retired; wrangler-action is its replacement.
+        uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          projectName: tally
-          directory: build/web
+          command: pages deploy build/web --project-name=tally
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
