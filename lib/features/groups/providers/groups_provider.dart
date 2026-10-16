@@ -1,3 +1,4 @@
+import 'package:tally/features/activity/activity_provider.dart';
 import 'package:tally/features/balances/providers/balances_provider.dart';
 import 'package:tally/features/expenses/providers/expenses_provider.dart';
 import 'package:tally/features/groups/data/groups_repository.dart';
@@ -39,5 +40,7 @@ final membersProvider = FutureProvider.family<List<GroupMember>, String>(
 void invalidateGroupMoney(WidgetRef ref, String groupId) {
   ref.invalidate(expensesProvider(groupId));
   ref.invalidate(balancesProvider(groupId));
+  ref.invalidate(settlementsProvider(groupId));
+  ref.invalidate(activityProvider(groupId));
   ref.invalidate(groupSummariesProvider);
 }

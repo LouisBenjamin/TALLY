@@ -1,11 +1,13 @@
 import 'dart:typed_data';
 
 import 'package:tally/core/icons.dart';
+import 'package:tally/core/supabase_client.dart';
 import 'package:tally/core/widgets/page_body.dart';
 import 'package:tally/features/groups/data/groups_repository.dart';
 import 'package:tally/features/groups/providers/groups_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
 class GroupSettingsScreen extends ConsumerStatefulWidget {
@@ -49,6 +51,41 @@ class _GroupSettingsScreenState extends ConsumerState<GroupSettingsScreen> {
       }
     } finally {
       if (mounted) setState(() => _uploading = false);
+    }
+  }
+
+  Future<void> _deleteGroup(String name) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        title: Text('Delete "$name"?'),
+        content: const Text(
+            'Every expense, payment and member goes with it, for everyone. '
+            "This can't be undone."),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+                backgroundColor: Theme.of(dialogCtx).colorScheme.error),
+            onPressed: () => Navigator.pop(dialogCtx, true),
+            child: const Text('Delete group'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await GroupsRepository().deleteGroup(groupId: widget.groupId);
+      ref.invalidate(groupSummariesProvider);
+      if (mounted) context.go('/groups');
+    } on Exception catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.toString())));
+      }
     }
   }
 
@@ -124,6 +161,16 @@ class _GroupSettingsScreenState extends ConsumerState<GroupSettingsScreen> {
                 style: theme.textTheme.titleMedium
                     ?.copyWith(letterSpacing: 2, fontWeight: FontWeight.bold),
               ),
+              if (group.createdBy == supabase.auth.currentUser?.id) ...[
+                const SizedBox(height: 40),
+                OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                      foregroundColor: theme.colorScheme.error),
+                  onPressed: () => _deleteGroup(group.name),
+                  icon: const Icon(AppIcons.delete),
+                  label: const Text('Delete group'),
+                ),
+              ],
             ],
           ),
         ),

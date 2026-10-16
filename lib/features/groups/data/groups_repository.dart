@@ -81,6 +81,17 @@ class GroupsRepository {
     return GroupMember.fromJson(data as Map<String, dynamic>);
   }
 
+  // Remove a member, or leave the group (pass your own member id). The
+  // remove_member RPC refuses unless their balance is zero.
+  Future<void> removeMember({required String memberId}) async {
+    await supabase.rpc('remove_member', params: {'p_member_id': memberId});
+  }
+
+  // Owner only; deletes every expense, payment and member with it.
+  Future<void> deleteGroup({required String groupId}) async {
+    await supabase.rpc('delete_group', params: {'p_group_id': groupId});
+  }
+
   Future<Group> createGroup({required String name}) async {
     final userId = supabase.auth.currentUser!.id;
 
@@ -107,6 +118,7 @@ class GroupsRepository {
         .from('group_members')
         .select('*, profiles(display_name)')
         .eq('group_id', groupId)
+        .isFilter('removed_at', null)
         .order('joined_at');
     return (data as List)
         .map((e) => GroupMember.fromJson(e as Map<String, dynamic>))

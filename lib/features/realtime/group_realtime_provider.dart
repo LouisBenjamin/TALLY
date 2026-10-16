@@ -1,4 +1,5 @@
 import 'package:tally/core/supabase_client.dart';
+import 'package:tally/features/activity/activity_provider.dart';
 import 'package:tally/features/balances/providers/balances_provider.dart';
 import 'package:tally/features/expenses/providers/expenses_provider.dart';
 import 'package:tally/features/groups/providers/groups_provider.dart';
@@ -18,7 +19,11 @@ final groupRealtimeProvider =
   void refresh() {
     ref.invalidate(expensesProvider(groupId));
     ref.invalidate(balancesProvider(groupId));
+    ref.invalidate(settlementsProvider(groupId));
     ref.invalidate(membersProvider(groupId));
+    // Activity rows are written by triggers in the same transaction as these
+    // changes, so the activity table itself needs no subscription.
+    ref.invalidate(activityProvider(groupId));
   }
 
   final channel = supabase.channel('group-$groupId');

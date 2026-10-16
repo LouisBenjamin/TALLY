@@ -1,5 +1,8 @@
 import 'package:decimal/decimal.dart';
 import 'package:tally/core/theme.dart';
+import 'package:tally/features/activity/activity_provider.dart';
+import 'package:tally/features/balances/ui/balances_tab.dart';
+import 'package:tally/features/balances/logic/settle.dart';
 import 'package:tally/features/balances/providers/balances_provider.dart';
 import 'package:tally/features/expenses/providers/categories_provider.dart';
 import 'package:tally/features/expenses/providers/expenses_provider.dart';
@@ -14,12 +17,14 @@ import 'package:tally/features/insights/ui/insights_screen.dart';
 import 'package:tally/features/realtime/group_realtime_provider.dart';
 import 'package:tally/features/recurring/providers/recurring_provider.dart';
 import 'package:tally/features/recurring/ui/recurring_list_screen.dart';
+import 'package:tally/models/activity_entry.dart';
 import 'package:tally/models/category.dart';
 import 'package:tally/models/expense.dart';
 import 'package:tally/models/group.dart';
 import 'package:tally/models/group_member.dart';
 import 'package:tally/models/member_balance.dart';
 import 'package:tally/models/recurring_expense.dart';
+import 'package:tally/models/settlement.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -227,7 +232,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('GroupDetailScreen renders its four tabs', (tester) async {
+  testWidgets('GroupDetailScreen renders its five tabs', (tester) async {
     _desktop(tester);
     addTearDown(tester.view.reset);
     await tester.pumpWidget(_host(
@@ -237,6 +242,23 @@ void main() {
         membersProvider(_gid).overrideWith((ref) async => _members),
         expensesProvider(_gid).overrideWith((ref) async => _expenses),
         balancesProvider(_gid).overrideWith((ref) async => _balances),
+        settlementsProvider(_gid).overrideWith((ref) async => [
+              Settlement(
+                id: 's1',
+                fromMemberId: 'm2',
+                toMemberId: 'm1',
+                amount: dec('45.00'),
+                occurredOn: DateTime(2026, 8, 20),
+              ),
+            ]),
+        activityProvider(_gid).overrideWith((ref) async => [
+              ActivityEntry(
+                id: 'a1',
+                summary: 'Ben added "Groceries"',
+                amount: dec('90.00'),
+                createdAt: DateTime.utc(2026, 8, 12, 18),
+              ),
+            ]),
         groupRealtimeProvider(_gid).overrideWithValue(null),
         categoriesProvider(_gid).overrideWith((ref) async => const [
               Category(id: 'c1', name: 'Food', icon: 'fork-knife'),
@@ -259,15 +281,54 @@ void main() {
     await tester.tap(find.text('Balances'));
     await tester.pumpAndSettle();
     expect(find.text('All settled up'), findsOneWidget);
+    expect(find.text('Sam paid Ben'), findsOneWidget);
+    expect(find.text('Record a payment'), findsOneWidget);
 
     await tester.tap(find.text('Members'));
     await tester.pumpAndSettle();
     expect(find.textContaining('Members ('), findsOneWidget);
     expect(find.text('AB452A'), findsOneWidget);
+    // Sam can be removed; Ben is the owner, so he deletes the group instead.
+    expect(find.text('Remove'), findsOneWidget);
 
     await tester.tap(find.text('Labels'));
     await tester.pumpAndSettle();
     expect(find.text('Food'), findsOneWidget);
+
+    await tester.tap(find.text('Activity'));
+    await tester.pumpAndSettle();
+    expect(find.text('Ben added "Groceries"'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('PaymentDialog prefills a suggestion and validates', (tester) async {
+    _desktop(tester);
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(_host(
+      Scaffold(
+        body: PaymentDialog(
+          groupId: _gid,
+          members: _members,
+          suggested: DebtTransfer(
+              fromMemberId: 'm2', toMemberId: 'm1', amount: dec('30.50')),
+        ),
+      ),
+      const [],
+    ));
+    await tester.pumpAndSettle();
+    FilledButton save() => tester.widget(find.widgetWithText(FilledButton, 'Save'));
+
+    expect(find.text('30.50'), findsOneWidget);
+    expect(save().onPressed, isNotNull);
+
+    // A partial payment is just a smaller amount.
+    await tester.enterText(find.byType(TextField), '10');
+    await tester.pump();
+    expect(save().onPressed, isNotNull);
+
+    await tester.enterText(find.byType(TextField), '0');
+    await tester.pump();
+    expect(save().onPressed, isNull);
     expect(tester.takeException(), isNull);
   });
 }

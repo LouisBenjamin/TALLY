@@ -41,6 +41,7 @@ class ExpensesRepository {
     required String description,
     String splitType = 'equal',
     String? categoryId,
+    required DateTime occurredOn,
     required List<Split> splits,
   }) async {
     await supabase.rpc('create_expense', params: {
@@ -50,9 +51,9 @@ class ExpensesRepository {
       'p_description': description,
       'p_split_type': splitType,
       'p_category_id': categoryId,
-      // The user's local today: the server's current_date is UTC, which is
-      // already tomorrow on a Montreal evening.
-      'p_occurred_on': isoDate(DateTime.now()),
+      // Always sent, never left to the server's current_date: that's UTC,
+      // which is already tomorrow on a Montreal evening.
+      'p_occurred_on': isoDate(occurredOn),
       'p_splits': splitsJson(splits),
     });
   }
@@ -67,6 +68,7 @@ class ExpensesRepository {
     required String description,
     String splitType = 'equal',
     String? categoryId,
+    required DateTime occurredOn,
     required List<Split> splits,
   }) async {
     await supabase.rpc('update_expense', params: {
@@ -76,6 +78,7 @@ class ExpensesRepository {
       'p_description': description,
       'p_split_type': splitType,
       'p_category_id': categoryId,
+      'p_occurred_on': isoDate(occurredOn),
       'p_splits': splitsJson(splits),
     });
   }
