@@ -23,9 +23,10 @@ Decimal percentShare(Decimal amount, Decimal percent) =>
 // Returns list of share amounts aligned 1-to-1 with [count] members.
 List<Decimal> splitEqually(Decimal total, int count) {
   if (count <= 0) return [];
-  final each = (total / Decimal.fromInt(count)).toDecimal(
-    scaleOnInfinitePrecision: 2,
-  );
+  // floor to whole cents: 10.01 / 2 is exactly 5.005, which no column can store.
+  final each = (total / Decimal.fromInt(count))
+      .toDecimal(scaleOnInfinitePrecision: 10)
+      .floor(scale: 2);
   final remainder = total - each * Decimal.fromInt(count);
   return [
     each + remainder, // first member gets any rounding remainder

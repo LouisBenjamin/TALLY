@@ -1,6 +1,7 @@
 import 'package:decimal/decimal.dart';
 import 'package:tally/core/dates.dart';
 import 'package:tally/core/supabase_client.dart';
+import 'package:tally/features/expenses/data/expenses_repository.dart';
 import 'package:tally/features/expenses/split_logic.dart';
 import 'package:tally/models/recurring_expense.dart';
 
@@ -28,38 +29,20 @@ class RecurringRepository {
     required DateTime nextOccurrence,
     required List<Split> splits,
   }) async {
-    final userId = supabase.auth.currentUser!.id;
-
-    final row = await supabase
-        .from('recurring_expenses')
-        .insert({
-          'group_id': groupId,
-          'payer_member_id': payerMemberId,
-          'amount': amount.toString(),
-          'description': description,
-          'split_type': splitType,
-          'category_id': categoryId,
-          'frequency': frequency,
-          'interval_count': intervalCount,
-          'next_occurrence': isoDate(nextOccurrence),
-          'created_by': userId,
-        })
-        .select('id')
-        .single();
-
-    final recurringId = row['id'] as String;
-
-    await supabase.from('recurring_expense_splits').insert(
-      splits
-          .map((s) => {
-                'recurring_id': recurringId,
-                'member_id': s.memberId,
-                'share_amount': s.shareAmount.toString(),
-                if (s.sharePercent != null)
-                  'share_percent': s.sharePercent.toString(),
-              })
-          .toList(),
-    );
+    // One transaction: a template saved without its splits would make the
+    // daily tick materialize split-less expenses forever.
+    await supabase.rpc('create_recurring', params: {
+      'p_group_id': groupId,
+      'p_payer_member_id': payerMemberId,
+      'p_amount': amount.toString(),
+      'p_description': description,
+      'p_split_type': splitType,
+      'p_category_id': categoryId,
+      'p_frequency': frequency,
+      'p_interval_count': intervalCount,
+      'p_next_occurrence': isoDate(nextOccurrence),
+      'p_splits': splitsJson(splits),
+    });
   }
 
   Future<void> setActive({required String id, required bool active}) async {
