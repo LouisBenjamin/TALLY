@@ -1,5 +1,6 @@
 import 'package:decimal/decimal.dart';
 import 'package:tally/core/icons.dart';
+import 'package:tally/core/theme.dart';
 import 'package:tally/core/supabase_client.dart';
 import 'package:tally/core/widgets/page_body.dart';
 import 'package:tally/features/expenses/providers/categories_provider.dart';
@@ -312,7 +313,7 @@ class _AddRecurringScreenState extends ConsumerState<AddRecurringScreen> {
                         compute.valid ? AppIcons.success : AppIcons.info,
                         size: 18,
                         color: compute.valid
-                            ? Colors.green
+                            ? AppColors.of(context).positive
                             : Theme.of(context).colorScheme.error,
                       ),
                       const SizedBox(width: 8),

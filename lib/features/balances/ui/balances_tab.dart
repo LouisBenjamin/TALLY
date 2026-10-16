@@ -1,6 +1,7 @@
 import 'package:decimal/decimal.dart';
 import 'package:tally/core/dates.dart';
 import 'package:tally/core/icons.dart';
+import 'package:tally/core/theme.dart';
 import 'package:tally/core/money.dart';
 import 'package:tally/core/supabase_client.dart';
 import 'package:tally/features/balances/data/balances_repository.dart';
@@ -52,13 +53,15 @@ class BalancesTab extends ConsumerWidget {
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
           children: [
             if (owing.isEmpty)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 24),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 24),
                 child: Column(
                   children: [
-                    Icon(AppIcons.success, size: 64, color: Colors.green),
-                    SizedBox(height: 16),
-                    Text('All settled up', style: TextStyle(fontSize: 18)),
+                    Icon(AppIcons.success,
+                        size: 64, color: AppColors.of(context).positive),
+                    const SizedBox(height: 16),
+                    Text('All settled up',
+                        style: Theme.of(context).textTheme.titleMedium),
                   ],
                 ),
               )
@@ -121,7 +124,7 @@ class _BalanceRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final owed = net > Decimal.zero;
-    final color = owed ? Colors.green.shade700 : theme.colorScheme.error;
+    final color = owed ? AppColors.of(context).positive : theme.colorScheme.error;
     final label = owed ? 'gets back' : 'owes';
     final abs = owed ? net : Decimal.zero - net;
 

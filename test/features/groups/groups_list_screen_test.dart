@@ -20,6 +20,7 @@ Future<void> pumpAt(
   WidgetTester tester,
   Size size, {
   required List<GroupSummary> groups,
+  Object? error,
 }) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1.0;
@@ -28,7 +29,10 @@ Future<void> pumpAt(
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
-        groupSummariesProvider.overrideWith((ref) async => groups),
+        groupSummariesProvider.overrideWith((ref) async {
+          if (error != null) throw error;
+          return groups;
+        }),
       ],
       child: MaterialApp(
         theme: AppTheme.light,
@@ -75,5 +79,19 @@ void main() {
     expect(find.textContaining("You're owed"), findsOneWidget);
     expect(find.textContaining('You owe'), findsOneWidget);
     expect(find.text('Settled up'), findsOneWidget);
+  });
+
+  testWidgets('a failed load shows a friendly error with retry',
+      (tester) async {
+    await pumpAt(tester, const Size(375, 900),
+        groups: const [], error: Exception('PostgrestException(boom)'));
+    expect(find.text('Try again'), findsOneWidget);
+    expect(find.textContaining('PostgrestException'), findsNothing);
+  });
+
+  testWidgets('empty state offers create and join', (tester) async {
+    await pumpAt(tester, const Size(375, 900), groups: const []);
+    expect(find.text('Create a group'), findsOneWidget);
+    expect(find.text('Join with a code'), findsOneWidget);
   });
 }

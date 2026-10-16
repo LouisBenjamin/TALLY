@@ -2,6 +2,7 @@ import 'package:decimal/decimal.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:tally/core/dates.dart';
 import 'package:tally/core/icons.dart';
+import 'package:tally/core/theme.dart';
 import 'package:tally/core/supabase_client.dart';
 import 'package:tally/core/widgets/page_body.dart';
 import 'package:tally/features/expenses/providers/categories_provider.dart';
@@ -509,7 +510,7 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
                 Icon(
                   plan.valid ? AppIcons.success : AppIcons.info,
                   size: 18,
-                  color: plan.valid ? Colors.green : theme.colorScheme.error,
+                  color: plan.valid ? AppColors.of(context).positive : theme.colorScheme.error,
                 ),
                 const SizedBox(width: 8),
                 Expanded(child: Text(plan.status)),
