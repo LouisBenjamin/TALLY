@@ -7,7 +7,7 @@ I built it as a portfolio project to learn Flutter and Dart.
 ## Features
 
 - **Sign in with an email code.** No passwords.
-- **Groups.** Create a group, invite people with a 6-character code or a join link, add a group photo.
+- **Groups.** Create a group, invite people with a 10-character code or a join link, add a group photo.
 - **Guests.** Add someone who doesn't have an account. They work like any other member.
 - **Expenses.** Split equally, by exact amounts, or by percentages. Edit or delete anytime.
 - **Balances.** See who owes whom, with a suggested minimal set of payments to settle up.
