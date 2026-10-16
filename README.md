@@ -7,14 +7,15 @@ I built it as a portfolio project to learn Flutter and Dart.
 ## Features
 
 - **Sign in with an email code.** No passwords.
-- **Groups.** Create a group, invite people with a 10-character code or a join link, add a group photo.
+- **Groups.** Create a group, invite people with a 10-character code or a join link, add a group photo. Leave a group or remove someone once their balance is zero; the owner can delete the group.
 - **Guests.** Add someone who doesn't have an account. They work like any other member.
-- **Expenses.** Split equally, by exact amounts, or by percentages. Edit or delete anytime.
-- **Balances.** See who owes whom, with a suggested minimal set of payments to settle up.
+- **Expenses.** Split equally, by exact amounts, or by percentages, on any date. Edit or delete anytime.
+- **Balances.** See who owes whom, with a suggested minimal set of payments to settle up. Record any payment, including partial ones, and edit or delete it later.
 - **Recurring expenses.** Rent, subscriptions, etc. get added automatically (daily, weekly, monthly).
 - **Categories and tags.** Manage them from the Labels tab.
 - **Insights.** Spending per category for last week, month to date, or year to date.
 - **Bank statement import.** Load a CSV from your bank, pick the shared transactions, and turn them into expenses. Importing the same statement twice won't create duplicates.
+- **Activity feed.** Every expense, payment and membership change, with who did it.
 - **Live updates.** When someone in the group adds an expense, everyone sees it right away.
 
 ## Tech stack
@@ -104,5 +105,5 @@ Secrets needed: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `REDIRECT_URL`, `CLOUDFLARE
 
 - Push notifications (setup notes in [`docs/push-notifications.md`](docs/push-notifications.md))
 - Multiple currencies (everything is CAD for now)
-- Removing members and transferring group ownership
+- Transferring group ownership
 - Importing PDF statements

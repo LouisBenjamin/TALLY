@@ -1,4 +1,5 @@
 import 'package:decimal/decimal.dart';
+import 'package:tally/models/activity_entry.dart';
 import 'package:tally/models/expense.dart';
 import 'package:tally/models/expense_split.dart';
 import 'package:tally/models/group.dart';
@@ -7,6 +8,7 @@ import 'package:tally/models/import_result.dart';
 import 'package:tally/models/member_balance.dart';
 import 'package:tally/models/merchant_rule.dart';
 import 'package:tally/models/recurring_expense.dart';
+import 'package:tally/models/settlement.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -232,6 +234,36 @@ void main() {
       });
       expect(result.skippedFingerprints, isEmpty);
       expect(result.summary, 'Imported 4');
+    });
+  });
+
+  group('Settlement.fromJson', () {
+    test('parses members, amount and date', () {
+      final s = Settlement.fromJson({
+        'id': 's1',
+        'group_id': 'g1',
+        'from_member': 'm2',
+        'to_member': 'm1',
+        'amount': 12.5,
+        'occurred_on': '2026-10-01',
+      });
+      expect(s.fromMemberId, 'm2');
+      expect(s.toMemberId, 'm1');
+      expect(s.amount, Decimal.parse('12.5'));
+      expect(s.occurredOn, DateTime(2026, 10, 1));
+    });
+  });
+
+  group('ActivityEntry.fromJson', () {
+    test('amount is optional', () {
+      final a = ActivityEntry.fromJson({
+        'id': 'a1',
+        'summary': 'Sam joined the group',
+        'amount': null,
+        'created_at': '2026-10-01T12:00:00Z',
+      });
+      expect(a.amount, isNull);
+      expect(a.summary, 'Sam joined the group');
     });
   });
 }

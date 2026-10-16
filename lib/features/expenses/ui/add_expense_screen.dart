@@ -1,4 +1,5 @@
 import 'package:decimal/decimal.dart';
+import 'package:tally/core/dates.dart';
 import 'package:tally/core/icons.dart';
 import 'package:tally/core/supabase_client.dart';
 import 'package:tally/core/widgets/page_body.dart';
@@ -46,6 +47,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   final Set<String> _selected = {};
   String? _payerMemberId;
   String? _categoryId;
+  DateTime _date = DateTime.now();
   // Once the user has picked a category by hand, a tag match on the
   // description must never silently override it.
   bool _categoryTouched = false;
@@ -119,6 +121,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
     _amountController.text = e.amount.toString();
     _descriptionController.text = e.description;
     _categoryId = e.categoryId;
+    _date = e.occurredOn;
     // Never let a tag rewrite a category that already exists on the expense.
     _categoryTouched = true;
     _payerMemberId = e.payerMemberId;
@@ -155,6 +158,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
           description: _descriptionController.text.trim(),
           splitType: _splitType,
           categoryId: _categoryId,
+          occurredOn: _date,
           splits: result.splits,
         );
       } else {
@@ -165,6 +169,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
           description: _descriptionController.text.trim(),
           splitType: _splitType,
           categoryId: _categoryId,
+          occurredOn: _date,
           splits: result.splits,
         );
       }
@@ -223,6 +228,23 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                       const Center(child: CircularProgressIndicator()),
                   error: (e, _) => Center(child: Text('Error: $e')),
                   data: (splits) {
+                    // The form only lists current members, so saving would
+                    // silently drop a removed member's share.
+                    final current = {for (final m in members) m.id};
+                    if (!current.contains(existing.payerMemberId) ||
+                        splits.any((s) => !current.contains(s.memberId))) {
+                      return const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(24),
+                          child: Text(
+                            'This expense involves someone who has left the '
+                            'group, so it can no longer be edited. You can '
+                            'still delete it.',
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      );
+                    }
                     if (!_inited) {
                       _initExisting(existing, splits);
                       _inited = true;
@@ -317,7 +339,25 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                 .toList(),
             onChanged: (v) => setState(() => _payerMemberId = v),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 8),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(AppIcons.dateRange),
+            title: const Text('Date'),
+            trailing: Text(formatDayYear(_date)),
+            onTap: () async {
+              final now = DateTime.now();
+              final picked = await showDatePicker(
+                context: context,
+                initialDate: _date,
+                firstDate: DateTime(2000), // must not exclude an old expense's date
+
+                lastDate: DateTime(now.year + 1, now.month, now.day),
+              );
+              if (picked != null) setState(() => _date = picked);
+            },
+          ),
+          const SizedBox(height: 16),
           Text('Split', style: Theme.of(context).textTheme.titleSmall),
           const SizedBox(height: 8),
           SplitTypeSelector(

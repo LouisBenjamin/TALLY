@@ -1,4 +1,5 @@
 import 'package:tally/core/icons.dart';
+import 'package:tally/features/activity/activity_tab.dart';
 import 'package:tally/core/money.dart';
 import 'package:tally/core/supabase_client.dart';
 import 'package:tally/core/widgets/page_body.dart';
@@ -31,7 +32,7 @@ class GroupDetailScreen extends ConsumerStatefulWidget {
 class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _tab =
-      TabController(length: 4, vsync: this)..addListener(() => setState(() {}));
+      TabController(length: 5, vsync: this)..addListener(() => setState(() {}));
 
   @override
   void dispose() {
@@ -100,6 +101,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
             Tab(text: 'Balances'),
             Tab(text: 'Members'),
             Tab(text: 'Labels'),
+            Tab(text: 'Activity'),
           ],
         ),
       ),
@@ -124,6 +126,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
             BalancesTab(groupId: widget.groupId),
             _MembersTab(groupId: widget.groupId),
             LabelsTab(groupId: widget.groupId),
+            ActivityTab(groupId: widget.groupId),
           ],
         ),
       ),
@@ -304,6 +307,48 @@ class _MembersTab extends ConsumerWidget {
   const _MembersTab({required this.groupId});
   final String groupId;
 
+  Future<void> _remove(
+    BuildContext context,
+    WidgetRef ref,
+    GroupMember m, {
+    required bool isYou,
+  }) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        title: Text(isYou ? 'Leave group?' : 'Remove ${m.displayName}?'),
+        content: Text(isYou
+            ? 'You will lose access to this group. Your past expenses stay.'
+            : 'Their past expenses and payments stay in the history.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogCtx, true),
+            child: Text(isYou ? 'Leave' : 'Remove'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await GroupsRepository().removeMember(memberId: m.id);
+      ref.invalidate(groupSummariesProvider);
+      if (isYou) {
+        if (context.mounted) context.go('/groups');
+      } else {
+        ref.invalidate(membersProvider(groupId));
+      }
+    } on Exception catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.toString())));
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final groupAsync = ref.watch(groupProvider(groupId));
@@ -324,10 +369,17 @@ class _MembersTab extends ConsumerWidget {
           Text('Members (${members.length})',
               style: Theme.of(context).textTheme.titleSmall),
           const SizedBox(height: 8),
-          ...members.map((m) => _MemberTile(
-                member: m,
-                isYou: m.userId != null && m.userId == myUserId,
-              )),
+          ...members.map((m) {
+            final isYou = m.userId != null && m.userId == myUserId;
+            return _MemberTile(
+              member: m,
+              isYou: isYou,
+              // The owner deletes the group instead (Group settings).
+              onRemove: m.role == 'owner'
+                  ? null
+                  : () => _remove(context, ref, m, isYou: isYou),
+            );
+          }),
         ],
       ),
     );
@@ -411,9 +463,14 @@ class _JoinCodeCard extends StatelessWidget {
 }
 
 class _MemberTile extends StatelessWidget {
-  const _MemberTile({required this.member, required this.isYou});
+  const _MemberTile({
+    required this.member,
+    required this.isYou,
+    required this.onRemove,
+  });
   final GroupMember member;
   final bool isYou;
+  final VoidCallback? onRemove;
 
   @override
   Widget build(BuildContext context) {
@@ -449,6 +506,12 @@ class _MemberTile extends StatelessWidget {
         ],
       ),
       subtitle: member.role == 'owner' ? const Text('Owner') : null,
+      trailing: onRemove == null
+          ? null
+          : TextButton(
+              onPressed: onRemove,
+              child: Text(isYou ? 'Leave' : 'Remove'),
+            ),
     );
   }
 }
